@@ -1,15 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1">
+<title>Worker Test</title>
+</head>
+
 <body>
 
-<h1>TEST</h1>
+<h1 id="status">起動中...</h1>
+
+<pre id="output"></pre>
 
 <script>
 
-alert("javascript ok");
+const URL =
+"https://news-subscription-worker.princess8mononoke.workers.dev?category=main";
+
+async function main(){
+
+    try{
+
+        document.getElementById("status")
+          .textContent =
+          "fetch開始";
+
+        const response =
+          await fetch(URL);
+
+        document.getElementById("status")
+          .textContent =
+          "HTTP " + response.status;
+
+        const text =
+          await response.text();
+
+        document.getElementById("status")
+          .textContent =
+          "成功";
+
+        document.getElementById("output")
+          .textContent =
+          text.substring(0,1000);
+
+    }
+    catch(error){
+
+        document.getElementById("status")
+          .textContent =
+          "ERROR";
+
+        document.getElementById("output")
+          .textContent =
+          error.toString();
+
+    }
+}
+
+main();
 
 </script>
 
 </body>
 </html>
-``
