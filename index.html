@@ -9,113 +9,317 @@
 
 <style>
 
-body{
+html,body{
+
+    margin:0;
+    padding:0;
+
+    width:100%;
+    height:100%;
+
     background:#000;
+
+    color:#fff;
+
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        sans-serif;
+}
+
+#clock{
+
+    position:absolute;
+
+    top:20px;
+    right:30px;
+
+    font-size:36px;
+
+    color:#ccc;
+}
+
+#category{
+
+    position:absolute;
+
+    top:20px;
+    left:30px;
+
     color:#ff9900;
-    font-family:sans-serif;
-    padding:20px;
+
+    font-size:36px;
+
+    font-weight:bold;
 }
 
-#status{
-    color:white;
-    font-size:28px;
-    margin-bottom:20px;
+#container{
+
+    position:absolute;
+
+    top:120px;
+    left:40px;
+    right:40px;
+    bottom:60px;
+
+    overflow:hidden;
 }
 
-#news{
-    line-height:1.8;
-    white-space:pre-wrap;
+#title{
+
+    color:#ff9900;
+
+    font-size:48px;
+
+    font-weight:bold;
+
+    margin-bottom:30px;
+}
+
+#description{
+
+    font-size:34px;
+
+    line-height:1.6;
+
+    margin-bottom:40px;
+}
+
+#pubDate{
+
+    color:#999;
+
+    font-size:24px;
+}
+
+#updated{
+
+    position:absolute;
+
+    bottom:20px;
+    left:30px;
+
+    color:#666;
+
+    font-size:18px;
 }
 
 </style>
-
 </head>
 <body>
 
-<div id="status">
+<div id="category">
 読み込み中...
 </div>
 
-<div id="news">
+<div id="clock"></div>
+
+<div id="container">
+
+    <div id="title"></div>
+
+    <div id="description"></div>
+
+    <div id="pubDate"></div>
+
 </div>
+
+<div id="updated"></div>
 
 <script>
 
-const URL =
-"https://news-subscription-worker.princess8mononoke.workers.dev?category=main";
+const WORKER =
+"https://news-subscription-worker.princess8mononoke.workers.dev";
 
-async function loadNews(){
+const FEEDS = [
 
-    try{
+{
+    name:"主要ニュース",
+    category:"main"
+},
 
-        const response =
-            await fetch(URL);
+{
+    name:"社会",
+    category:"society"
+},
 
-        const xmlText =
-            await response.text();
+{
+    name:"科学・医療",
+    category:"science"
+},
 
-        const parser =
-            new DOMParser();
+{
+    name:"国際",
+    category:"world"
+},
 
-        const xml =
-            parser.parseFromString(
-                xmlText,
-                "text/xml"
-            );
+{
+    name:"スポーツ",
+    category:"sports"
+}
 
-        const items =
-            xml.querySelectorAll("item");
+];
 
-        let output = "";
+let currentFeed = 0;
+let currentItem = 0;
 
-        items.forEach((item,index)=>{
+const cache = {};
 
-            const title =
-                item.querySelector("title")
-                ?.textContent ?? "";
+function updateClock(){
 
-            const pubDate =
-                item.querySelector("pubDate")
-                ?.textContent ?? "";
-
-            output +=
-                (index + 1)
-                + ". "
-                + title
-                + "\n"
-                + pubDate
-                + "\n\n";
-
-        });
-
-        document.getElementById(
-            "status"
-        ).textContent =
-            "タイトル取得成功";
-
-        document.getElementById(
-            "news"
-        ).textContent =
-            output;
-
-    }
-    catch(error){
-
-        document.getElementById(
-            "status"
-        ).textContent =
-            "ERROR";
-
-        document.getElementById(
-            "news"
-        ).textContent =
-            error.toString();
-
-    }
+    document
+      .getElementById("clock")
+      .textContent =
+      new Date()
+      .toLocaleTimeString("ja-JP");
 
 }
 
-loadNews();
+setInterval(updateClock,1000);
+updateClock();
+
+async function loadFeed(feed){
+
+    const response =
+      await fetch(
+        WORKER +
+        "?category=" +
+        feed.category +
+        "&t=" +
+        Date.now()
+      );
+
+    const xmlText =
+      await response.text();
+
+    const xml =
+      new DOMParser()
+      .parseFromString(
+          xmlText,
+          "text/xml"
+      );
+
+    const items =
+      Array.from(
+        xml.querySelectorAll("item")
+      );
+
+    cache[feed.category] =
+      items.map(item=>({
+
+        title:
+          item.querySelector("title")
+          ?.textContent ?? "",
+
+        description:
+          item.querySelector("description")
+          ?.textContent ?? "",
+
+        pubDate:
+          item.querySelector("pubDate")
+          ?.textContent ?? ""
+
+      }));
+
+}
+
+async function refreshAll(){
+
+    for(const feed of FEEDS){
+
+        await loadFeed(feed);
+
+    }
+
+    document
+      .getElementById("updated")
+      .textContent =
+      "更新 "
+      + new Date()
+      .toLocaleString("ja-JP");
+
+}
+
+function showCurrentArticle(){
+
+    const feed =
+      FEEDS[currentFeed];
+
+    const items =
+      cache[feed.category];
+
+    if(
+      !items ||
+      !items.length
+    ){
+       return;
+    }
+
+    if(
+      currentItem >=
+      items.length
+    ){
+
+        currentItem = 0;
+
+        currentFeed++;
+
+        if(
+          currentFeed >=
+          FEEDS.length
+        ){
+
+            currentFeed = 0;
+        }
+
+        return showCurrentArticle();
+    }
+
+    const article =
+      items[currentItem];
+
+    document
+      .getElementById("category")
+      .textContent =
+      feed.name;
+
+    document
+      .getElementById("title")
+      .textContent =
+      article.title;
+
+    document
+      .getElementById("description")
+      .textContent =
+      article.description;
+
+    document
+      .getElementById("pubDate")
+      .textContent =
+      article.pubDate;
+
+    currentItem++;
+}
+
+async function initialize(){
+
+    await refreshAll();
+
+    showCurrentArticle();
+
+}
+
+initialize();
+
+setInterval(
+    showCurrentArticle,
+    15000
+);
+
+setInterval(
+    refreshAll,
+    5 * 60 * 1000
+);
 
 </script>
 
