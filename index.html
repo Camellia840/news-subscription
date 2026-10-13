@@ -2,10 +2,13 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1">
+
 <title>News Subscription</title>
 
 <style>
+
 body{
     background:#000;
     color:#ff9900;
@@ -20,19 +23,21 @@ body{
 }
 
 #news{
-    white-space:pre-wrap;
     line-height:1.8;
+    white-space:pre-wrap;
 }
-</style>
-</head>
 
+</style>
+
+</head>
 <body>
 
 <div id="status">
 読み込み中...
 </div>
 
-<div id="news"></div>
+<div id="news">
+</div>
 
 <script>
 
@@ -46,24 +51,65 @@ async function loadNews(){
         const response =
             await fetch(URL);
 
-        const xml =
+        const xmlText =
             await response.text();
 
-        document.getElementById("status")
-            .textContent = "取得成功";
+        const parser =
+            new DOMParser();
 
-        document.getElementById("news")
-            .textContent =
-            xml.substring(0,3000);
+        const xml =
+            parser.parseFromString(
+                xmlText,
+                "text/xml"
+            );
+
+        const items =
+            xml.querySelectorAll("item");
+
+        let output = "";
+
+        items.forEach((item,index)=>{
+
+            const title =
+                item.querySelector("title")
+                ?.textContent ?? "";
+
+            const pubDate =
+                item.querySelector("pubDate")
+                ?.textContent ?? "";
+
+            output +=
+                (index + 1)
+                + ". "
+                + title
+                + "\n"
+                + pubDate
+                + "\n\n";
+
+        });
+
+        document.getElementById(
+            "status"
+        ).textContent =
+            "タイトル取得成功";
+
+        document.getElementById(
+            "news"
+        ).textContent =
+            output;
 
     }
-    catch(e){
+    catch(error){
 
-        document.getElementById("status")
-            .textContent = "ERROR";
+        document.getElementById(
+            "status"
+        ).textContent =
+            "ERROR";
 
-        document.getElementById("news")
-            .textContent = e.toString();
+        document.getElementById(
+            "news"
+        ).textContent =
+            error.toString();
 
     }
 
