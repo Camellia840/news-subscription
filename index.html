@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport"
       content="width=device-width, initial-scale=1">
@@ -9,23 +11,105 @@
 
 <style>
 
-body{
+html,body{
 
     margin:0;
-    background:#000;
+    width:100%;
+    height:100%;
 
+    overflow:hidden;
+
+    background:#000;
     color:#ff9900;
 
-    font-family:sans-serif;
+    font-family:
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
+}
 
-    display:flex;
+#feedName{
 
-    align-items:center;
-    justify-content:center;
+    position:absolute;
 
-    height:100vh;
+    top:20px;
+    left:30px;
 
-    font-size:64px;
+    font-size:38px;
+    font-weight:bold;
+}
+
+#feedInfo{
+
+    position:absolute;
+
+    top:70px;
+    left:30px;
+
+    color:#aaa;
+
+    font-size:18px;
+}
+
+#clock{
+
+    position:absolute;
+
+    top:20px;
+    right:30px;
+
+    color:white;
+
+    font-size:42px;
+    font-weight:bold;
+}
+
+#updated{
+
+    position:absolute;
+
+    bottom:20px;
+    left:30px;
+
+    color:#888;
+
+    font-size:18px;
+}
+
+.ticker-container{
+
+    position:absolute;
+
+    top:50%;
+    width:100%;
+
+    overflow:hidden;
+
+    transform:translateY(-50%);
+}
+
+#ticker{
+
+    display:inline-block;
+
+    white-space:nowrap;
+
+    padding-left:100%;
+
+    font-size:72px;
+    font-weight:bold;
+}
+
+@keyframes tickerScroll {
+
+    from {
+        transform:translateX(0);
+    }
+
+    to {
+        transform:translateX(-50%);
+    }
+
 }
 
 </style>
@@ -34,7 +118,265 @@ body{
 
 <body>
 
-News Subscription Ready
+<div id="feedName">
+読み込み中...
+</div>
+
+<div id="feedInfo">
+</div>
+
+<div id="clock">
+</div>
+
+<div class="ticker-container">
+
+    <div id="ticker">
+        ニュース取得中...
+    </div>
+
+</div>
+
+<div id="updated">
+RSS取得中...
+</div>
+
+<script>
+
+const WORKER_URL =
+"https://news-subscription-worker.princess8mononoke.workers.dev";
+
+const FEEDS = [
+
+{
+  name:"主要",
+  category:"main"
+},
+
+{
+  name:"社会",
+  category:"society"
+},
+
+{
+  name:"科学・医療",
+  category:"science"
+},
+
+{
+  name:"国際",
+  category:"world"
+},
+
+{
+  name:"スポーツ",
+  category:"sports"
+}
+
+];
+
+let currentFeed = 0;
+
+const cache = {};
+
+function updateClock(){
+
+    document.getElementById(
+      "clock"
+    ).textContent =
+      new Date()
+      .toLocaleTimeString(
+         "ja-JP"
+      );
+
+}
+
+setInterval(
+  updateClock,
+  1000
+);
+
+updateClock();
+
+async function fetchFeed(feed){
+
+    const response =
+      await fetch(
+       WORKER_URL +
+       "?category=" +
+       feed.category +
+       "&t=" +
+       Date.now()
+      );
+
+    const data =
+      await response.json();
+
+    cache[feed.category] = data;
+}
+
+async function refreshFeeds(){
+
+    for(const feed of FEEDS){
+
+        try{
+
+            await fetchFeed(feed);
+
+        }catch(error){
+
+            console.log(error);
+
+        }
+
+    }
+
+    document
+      .getElementById(
+        "updated"
+      )
+      .textContent =
+        "RSS更新 "
+        +
+        new Date()
+        .toLocaleTimeString(
+          "ja-JP"
+        );
+}
+
+function showCurrentFeed(){
+
+    const feed =
+      FEEDS[currentFeed];
+
+    const data =
+      cache[feed.category];
+
+    if(
+      !data ||
+      !data.items ||
+      !data.items.length
+    ){
+
+      nextFeed();
+      return;
+
+    }
+
+    document
+      .getElementById(
+        "feedName"
+      )
+      .textContent =
+      feed.name;
+
+    const dates =
+      data.items
+        .map(
+           x => new Date(
+             x.pubDate
+           )
+        )
+        .filter(
+           d => !isNaN(d)
+        );
+
+    if(dates.length){
+
+        const newest =
+          new Date(
+            Math.max(
+              ...dates
+            )
+          );
+
+        const oldest =
+          new Date(
+            Math.min(
+              ...dates
+            )
+          );
+
+        document
+          .getElementById(
+            "feedInfo"
+          )
+          .textContent =
+            newest
+            .toLocaleString("ja-JP")
+            +
+            " ～ "
+            +
+            oldest
+            .toLocaleString("ja-JP");
+    }
+
+    const text =
+      data.items
+       .slice(0,10)
+       .map(
+          item => item.title
+       )
+       .join(
+          "　◆　"
+       );
+
+    const ticker =
+      document.getElementById(
+        "ticker"
+      );
+
+    ticker.style.animation =
+      "none";
+
+    void ticker.offsetWidth;
+
+    ticker.textContent =
+      text +
+      "　◆　◆　◆　" +
+      text;
+
+    ticker.style.animation =
+      "tickerScroll 90s linear 1";
+
+}
+
+function nextFeed(){
+
+    currentFeed++;
+
+    if(
+      currentFeed >=
+      FEEDS.length
+    ){
+
+      currentFeed = 0;
+    }
+
+    showCurrentFeed();
+}
+
+document
+.getElementById("ticker")
+.addEventListener(
+  "animationend",
+  nextFeed
+);
+
+async function initialize(){
+
+    await refreshFeeds();
+
+    showCurrentFeed();
+}
+
+initialize();
+
+setInterval(
+  refreshFeeds,
+  5 * 60 * 1000
+);
+
+</script>
 
 </body>
 </html>
