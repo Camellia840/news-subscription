@@ -231,12 +231,21 @@ async function refreshAll(){
 
     }
 
-    document
-      .getElementById("updated")
-      .textContent =
-      "更新 "
-      + new Date()
-      .toLocaleString("ja-JP");
+document
+  .getElementById("updated")
+  .textContent =
+  "更新 "
+  + new Date()
+      .toLocaleString(
+        "ja-JP",
+        {
+          year:"numeric",
+          month:"2-digit",
+          day:"2-digit",
+          hour:"2-digit",
+          minute:"2-digit"
+        }
+      );
 
 }
 
@@ -293,9 +302,23 @@ function showCurrentArticle(){
       .textContent =
       article.description;
 
-    document
-      .getElementById("pubDate")
-      .textContent =
+const articleDate =
+  new Date(article.pubDate);
+
+document
+  .getElementById("pubDate")
+  .textContent =
+  articleDate.toLocaleString(
+    "ja-JP",
+    {
+      year:"numeric",
+      month:"2-digit",
+      day:"2-digit",
+      hour:"2-digit",
+      minute:"2-digit"
+    }
+  );
+      
       article.pubDate;
 
     currentItem++;
